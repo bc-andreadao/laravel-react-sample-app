@@ -1,6 +1,6 @@
 import Navigation from '@/Components/Navigation';
 import Spinner from '@/Components/Spinner';
-import { ApiService } from '@/Services';
+import { ApiService } from '@/services';
 
 import { Head } from '@inertiajs/react';
 import React from 'react';
@@ -99,7 +99,7 @@ export default class Home extends React.Component {
                                         {
                                             this.state.storeInfo.logo.url
                                                 ?
-                                                <img src={this.state.storeInfo.logo.url} className="img-fluid img-thumbnail rounded" />
+                                                <img alt={this.state.storeInfo.name} src={this.state.storeInfo.logo.url} className="img-fluid img-thumbnail rounded" />
                                                 :
                                                 <h5>{this.state.storeInfo.name}</h5>
                                         }
