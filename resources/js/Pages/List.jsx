@@ -1,7 +1,7 @@
 import Navigation from '@/Components/Navigation';
 import Spinner from '@/Components/Spinner';
 import Table from '@/Components/Table';
-import { ApiService } from '@/Services';
+import { ApiService } from '@/services';
 
 import { Head } from '@inertiajs/react';
 import React from 'react';
