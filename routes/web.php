@@ -5,8 +5,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-use App\Http\Controllers\MainController;
-
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -19,30 +17,22 @@ use App\Http\Controllers\MainController;
 */
 
 Route::get('/', function () {
-    return Inertia::render('Home');
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
 });
 
-Route::get('/list', function () {
-    return Inertia::render('List');
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-
-Route::group(['prefix' => 'auth'], function () {
-    Route::get('install', [MainController::class, 'install']);
-
-    Route::get('load', [MainController::class, 'load']);
-
-    Route::get('uninstall', function () {
-        echo 'uninstall';
-        return app()->version();
-    });
-
-    Route::get('remove-user', function () {
-        echo 'remove-user';
-        return app()->version();
-    });
-});
-
-Route::any('/bc-api/{endpoint}', [MainController::class, 'proxyBigCommerceAPIRequest'])
-    ->where('endpoint', 'v2\/.*|v3\/.*');
 
 require __DIR__.'/auth.php';
