@@ -182,7 +182,8 @@ class MainController extends BaseController
         }
 
         $client = new Client();
-        $result = $client->request($request->method(), 'https://api.bigcommerce.com/' . $this->getStoreHash($request) .'/'. $endpoint, $requestConfig);
+        $queryString = $request->getQueryString() ? "?{$request->getQueryString()}" : '';
+        $result = $client->request($request->method(), 'https://api.bigcommerce.com/stores/' . $this->getStoreHash($request) .'/'. $endpoint . $queryString, $requestConfig);
         
         return $result;
     }
