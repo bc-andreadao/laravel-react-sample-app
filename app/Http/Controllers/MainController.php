@@ -195,8 +195,30 @@ class MainController extends BaseController
             $endpoint .= '.json';
         }
 
-        $result = $this->makeBigCommerceAPIRequest($request, $endpoint);
+        try {
+            $result = $this->makeBigCommerceAPIRequest($request, $endpoint);
+            
+            // Success case - add headers and return response
+            $rateLimitHeaders = [
+                'X-Rate-Limit-Time-Reset-Ms' => $result->getHeader('X-Rate-Limit-Time-Reset-Ms')[0] ?? null,
+                'X-Rate-Limit-Time-Window-Ms' => $result->getHeader('X-Rate-Limit-Time-Window-Ms')[0] ?? null,
+                'X-Rate-Limit-Requests-Left' => $result->getHeader('X-Rate-Limit-Requests-Left')[0] ?? null,
+                'X-Rate-Limit-Requests-Quota' => $result->getHeader('X-Rate-Limit-Requests-Quota')[0] ?? null,
+            ];
 
-        return response($result->getBody(), $result->getStatusCode())->header('Content-Type', 'application/json');
+            return response($result->getBody(), $result->getStatusCode())
+                ->header('Content-Type', 'application/json')
+                ->withHeaders($rateLimitHeaders);
+
+        } catch (RequestException $e) {
+            if ($e->hasResponse()) {
+                $response = $e->getResponse();
+                // Pass through both status code and error body
+                return response($response->getBody(), $response->getStatusCode())
+                    ->header('Content-Type', 'application/json');
+            }
+            
+            throw $e;
+        }
     }
 }
