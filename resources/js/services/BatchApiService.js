@@ -1,9 +1,9 @@
-import { ApiService } from './ApiService';
+import { extractPaginationData, extractRateLimitData } from './utils/responseExtractors';
 
 export const BatchApiService = {
-    // Reuse the helper methods from ApiService
-    _extractPaginationData: ApiService._extractPaginationData,
-    _extractRateLimitData: ApiService._extractRateLimitData,
+        _extractPaginationData: extractPaginationData,
+        _extractRateLimitData: extractRateLimitData,
+    
 
     async fetchAllPages(resource, params = {}) {
         params = Object.assign({
