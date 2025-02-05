@@ -13,8 +13,7 @@ export default class List extends React.Component {
         this.state = {
             isOrdersLoading: true,
             orders: {
-                data: [],
-                pagination: {},
+                data: []
             },
             tableHeaders:
                 [
@@ -77,14 +76,21 @@ export default class List extends React.Component {
     loadOrders() {
         ApiService.getOrders({
             limit: 5
-        }).then(this.handleOrdersResponse.bind(this));
+        }).then(this.handleOrdersResponse.bind(this))
+        .catch(error => {
+            if (error.retryAfter) {
+                setTimeout(() => this.loadOrders(), error.retryAfter);
+            } else {
+                console.error('Failed to load orders:', error.response.data);
+            }
+        });
     }
-
-    handleOrdersResponse(response) {
+    
+    handleOrdersResponse(response) {        
         this.setState({
             isOrdersLoading: false,
             orders: {
-                data: response.data
+                data: response,
             }
         });
     }
