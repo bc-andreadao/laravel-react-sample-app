@@ -5,6 +5,15 @@ export const BatchApiService = {
         _extractRateLimitData: extractRateLimitData,
     
 
+    // Helper throttle function
+    async _throttle(response) {
+        const rateLimit = this._extractRateLimitData(response);
+        if (rateLimit.requestsLeft <= 3) { // Buffer threshold
+            const waitTime = rateLimit.windowMs / rateLimit.requestsQuota;
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+    },
+
     async fetchAllPages(resource, params = {}) {
         params = Object.assign({
             page: 1,
@@ -23,6 +32,9 @@ export const BatchApiService = {
                     params,
                 });
                 
+                // Throttle before processing response
+                await this._throttle(response);
+                
                 lastResponse = response;
 
                 if (response?.data) {
@@ -34,11 +46,6 @@ export const BatchApiService = {
                 
                 if (hasNextPage) {
                     params.page++;
-                }
-
-                const rateLimit = this._extractRateLimitData(response);
-                if (rateLimit.requestsLeft <= 1) {
-                    await new Promise(resolve => setTimeout(resolve, rateLimit.resetMs));
                 }
 
             } catch (error) {
