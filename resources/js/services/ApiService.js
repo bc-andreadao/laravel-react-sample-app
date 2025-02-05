@@ -100,7 +100,7 @@ export const ApiService = {
                     allData = allData.concat(response?.data);
                 }
 
-                // // Check if there's a next page
+                // Check if there's a next page
                 const pagination = this._extractPaginationData(response);
                 hasNextPage = pagination.currentPage < pagination.totalPages;
                 
@@ -114,21 +114,20 @@ export const ApiService = {
                 if (rateLimit.requestsLeft <= 1) {
                     await new Promise(resolve => setTimeout(resolve, rateLimit.resetMs));
                 }
-
-        } catch (error) {
-            if (error.response?.status === 429) {
+                
+            } catch (error) {
                 const rateLimit = this._extractRateLimitData(error.response);
-                throw {
-                    ...error,
-                    rateLimit,
-                    retryAfter: rateLimit.resetMs,
-                };
+
+                if (error.response?.status === 429) {
+                    throw {
+                        ...error,
+                        retryAfter: rateLimit.resetMs
+                    };
+                }
+                throw error;
             }
-
-            throw error;
         }
 
-            return allData;
-        }
+        return allData;
     }
 };

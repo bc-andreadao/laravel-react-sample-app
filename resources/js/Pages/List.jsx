@@ -81,7 +81,7 @@ export default class List extends React.Component {
             if (error.retryAfter) {
                 setTimeout(() => this.loadOrders(), error.retryAfter);
             } else {
-                console.error('Failed to load orders:', error.response.data);
+                console.error('Failed to load orders:', error.response.data.message);
             }
         });
     }

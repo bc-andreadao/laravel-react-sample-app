@@ -6,6 +6,7 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
 
 use GuzzleHttp\Exception\RequestException;
 
@@ -211,14 +212,27 @@ class MainController extends BaseController
                 ->withHeaders($rateLimitHeaders);
 
         } catch (RequestException $e) {
-            if ($e->hasResponse()) {
-                $response = $e->getResponse();
-                // Pass through both status code and error body
-                return response($response->getBody(), $response->getStatusCode())
-                    ->header('Content-Type', 'application/json');
+            // Log the full error details for debugging
+            Log::error('BigCommerce API Error', [
+                'endpoint' => $endpoint,
+                'status' => $e->getResponse()?->getStatusCode(),
+                'error' => $e->getMessage(),
+                'response' => $e->getResponse()?->getBody()->getContents()
+            ]);
+
+            if ($e->getResponse()?->getStatusCode() === 429) {
+                return response()->json(
+                    ['message' => 'Too many requests'],
+                    429,
+                    ['X-Rate-Limit-Time-Reset-Ms' => $e->getResponse()->getHeader('X-Rate-Limit-Time-Reset-Ms')[0] ?? 5000]
+                );
             }
-            
-            throw $e;
+
+            // Return generic error messages for all other errors
+            return response()->json(
+                ['message' => 'An error occurred while processing your request'],
+                500
+            );
         }
     }
 }
