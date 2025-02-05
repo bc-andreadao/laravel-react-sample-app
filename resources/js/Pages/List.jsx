@@ -13,7 +13,8 @@ export default class List extends React.Component {
         this.state = {
             isOrdersLoading: true,
             orders: {
-                data: []
+                data: [],
+                pagination: {}
             },
             tableHeaders:
                 [
@@ -85,12 +86,12 @@ export default class List extends React.Component {
             }
         });
     }
-    
-    handleOrdersResponse(response) {        
+    handleOrdersResponse(response) {
         this.setState({
             isOrdersLoading: false,
             orders: {
-                data: response,
+                data: response.data,
+                pagination: response.pagination
             }
         });
     }

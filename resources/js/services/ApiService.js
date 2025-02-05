@@ -22,8 +22,22 @@ export const ApiService = {
         };
     },
 
-    async getOrders(params = {}) {
-        return this.fetchAllPages('v2/orders', params);
+    async getOrders(params) {
+        params = Object.assign({
+            page: 1,
+            limit: 10,
+        }, params); 
+
+        const response = await axios({
+            method: 'get',
+            url: '/bc-api/v2/orders',
+            params,
+        });
+
+        response.pagination = this._extractPaginationData(response);
+        response.rateLimit = this._extractRateLimitData(response);
+        
+        return response;
     },
 
     updateOrder(orderId, data) {
@@ -76,58 +90,4 @@ export const ApiService = {
             url: `/bc-api/${resource}`,
         });
     },
-
-    async fetchAllPages(resource, params = {}) {
-        // Initialize with default params
-        params = Object.assign({
-            page: 1,
-            limit: 250, // BigCommerce max limit
-        }, params);
-
-        let allData = [];
-        let hasNextPage = true;
-
-        while (hasNextPage) {
-            try {
-                const response = await axios({
-                    method: 'get',
-                    url: `/bc-api/${resource}`,
-                    params,
-                });
-
-                // Add the current page's data to our collection
-                if (response?.data) {
-                    allData = allData.concat(response?.data);
-                }
-
-                // Check if there's a next page
-                const pagination = this._extractPaginationData(response);
-                hasNextPage = pagination.currentPage < pagination.totalPages;
-                
-                // Update page number for next iteration
-                if (hasNextPage) {
-                    params.page++;
-                }
-
-                // Optional: Add delay to respect rate limits
-                const rateLimit = this._extractRateLimitData(response);
-                if (rateLimit.requestsLeft <= 1) {
-                    await new Promise(resolve => setTimeout(resolve, rateLimit.resetMs));
-                }
-                
-            } catch (error) {
-                const rateLimit = this._extractRateLimitData(error.response);
-
-                if (error.response?.status === 429) {
-                    throw {
-                        ...error,
-                        retryAfter: rateLimit.resetMs
-                    };
-                }
-                throw error;
-            }
-        }
-
-        return allData;
-    }
 };
