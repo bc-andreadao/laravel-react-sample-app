@@ -1,10 +1,10 @@
 export const extractPaginationData = (response) => {
     return {
-        total: parseInt(response.data?.meta?.pagination?.total || 0),
-        totalPages: parseInt(response.data?.meta?.pagination?.total_pages || 0),
-        currentPage: parseInt(response.data?.meta?.pagination?.current_page || 1),
-        perPage: parseInt(response.data?.meta?.pagination?.per_page || 10),
-        count: parseInt(response.data?.meta?.pagination?.count || 0),
+        total: parseInt(response.data?.meta?.pagination?.total || null),
+        totalPages: parseInt(response.data?.meta?.pagination?.total_pages || null),
+        currentPage: parseInt(response.data?.meta?.pagination?.current_page || null),
+        perPage: parseInt(response.data?.meta?.pagination?.per_page || null),
+        count: parseInt(response.data?.meta?.pagination?.count || null),
         previousLink: response.data?.meta?.pagination?.links?.previous || null,
         currentLink: response.data?.meta?.pagination?.links?.current || null,
         nextLink: response.data?.meta?.pagination?.links?.next || null,

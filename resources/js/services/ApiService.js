@@ -66,6 +66,8 @@ export const ApiService = {
         });
 
         await this._throttle(response);
+
+        // response.pagination = this._extractPaginationData(response);
         return response;
     },
 
