@@ -28,7 +28,6 @@ export const ApiService = {
         await this._throttle(response);
 
         response.pagination = this._extractPaginationData(response);
-        response.rateLimit = this._extractRateLimitData(response);
         
         return response;
     },
