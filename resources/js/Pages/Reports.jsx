@@ -1,8 +1,6 @@
 import Navigation from '@/Components/Navigation';
 import Spinner from '@/Components/Spinner';
-import Table from '@/Components/Table';
 import { BatchApiService } from '@/services';
-
 import { Head } from '@inertiajs/react';
 import React from 'react';
 
@@ -11,96 +9,134 @@ export default class Reports extends React.Component {
         super(props);
 
         this.state = {
-            isOrdersLoading: true,
-            orders: {
-                data: [],
-            },
-            tableHeaders: [
-                {
-                    label: "Order ID",
-                    index: "id",
-                    callback: function (orderId) {
-                        return orderId;
-                    },
-                },
-                {
-                    label: "Billing Name",
-                    index: "billing_address",
-                    callback: function (billingAddress) {
-                        return `${billingAddress.first_name} ${billingAddress.last_name}`;
-                    },
-                },
-                {
-                    label: "Total",
-                    index: "total_inc_tax",
-                    callback: function (total) {
-                        return new Intl.NumberFormat('en-US', { 
-                            style: 'currency', 
-                            currency: 'USD' 
-                        }).format(total);
-                    },
-                },
-            ]
+            isExporting: false,
+            lastExportTime: null,
+            error: null
         };
     }
 
-    componentDidMount() {
-        this.loadAllOrders();
-    }
+    exportInventoryCSV = async () => {
+        this.setState({ isExporting: true, error: null });
 
-    loadAllOrders() {
-        BatchApiService.exportOrders()
-            .then(this.handleOrdersResponse.bind(this))
-            .catch(error => {
-                if (error.response?.status === 429) {
-                    setTimeout(() => this.loadAllOrders(), error.retryAfter);
-                }
-                this.setState({ isOrdersLoading: false });
+        try {
+            const response = await BatchApiService.exportInventory();
+            const csvData = this.convertToCSV(response.data.data);
+            this.downloadCSV(csvData, `inventory-export-${new Date().toISOString()}.csv`);
+            this.setState({ 
+                lastExportTime: new Date().toLocaleString(),
+                isExporting: false 
             });
-    }
-
-    handleOrdersResponse(response) {
-        this.setState({
-            isOrdersLoading: false,
-            orders: {
-                data: response.data,
+        } catch (error) {
+            if (error.retryAfter) {
+                setTimeout(() => this.exportInventoryCSV(), error.retryAfter);
+            } else {
+                this.setState({ 
+                    error: 'Failed to export inventory data. Please try again.',
+                    isExporting: false 
+                });
             }
-        });
+        }
+    };
+
+    convertToCSV(items) {
+        // Define CSV headers
+        const headers = [
+            'Product ID',
+            'Variant ID',
+            'SKU',
+            'Available to Sell',
+            'Total On Hand',
+            'Warning Level',
+            'Safety Stock',
+            'Is In Stock',
+            'Bin Picking Number'
+        ];
+
+        // Convert items to CSV rows
+        const rows = items.map(item => [
+            item.identity.product_id,
+            item.identity.variant_id,
+            item.identity.sku,
+            item.available_to_sell,
+            item.total_inventory_onhand,
+            item.settings.warning_level,
+            item.settings.safety_stock,
+            item.settings.is_in_stock ? 'Yes' : 'No',
+            item.settings.bin_picking_number
+        ]);
+
+        // Combine headers and rows
+        return [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
     }
 
-    hasOrders() {
-        return (this.state.orders.data.length > 0);
+    downloadCSV(csvData, filename) {
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     }
 
     render() {
         return (
             <>
-                <Head title="Orders Report" />
+                <Head title="Inventory Export" />
                 <Navigation />
                 <div className="container mx-auto p-5">
                     <div className="content col-span-3 grid-col-3 rounded bg-gray-100 shadow-lg p-4">
-                        <h2 className="text-xl font-bold mb-6">Complete Orders Report</h2>
-                        {
-                            this.state.isOrdersLoading
-                                ?
-                                <Spinner />
-                                :
-                                this.hasOrders()
-                                    ?
-                                    <section>
-                                        <div className="mb-4 text-sm text-gray-600">
-                                            Showing all {this.state.orders.data.length} orders
-                                        </div>
-                                        <Table 
-                                            tableHeaders={this.state.tableHeaders} 
-                                            tableData={this.state.orders.data} 
-                                        />
-                                    </section>
-                                    :
-                                    <section>
-                                        <div className="emptyTable">No orders exist yet!</div>
-                                    </section>
-                        }
+                        <h2 className="text-xl font-bold mb-6">Inventory Export Tool</h2>
+                        
+                        <div className="mb-6">
+                            <p className="text-gray-600 mb-4">
+                                Export a complete CSV file containing all inventory items across all pages. 
+                                This operation may take a few moments to complete.
+                            </p>
+
+                            <button
+                                onClick={this.exportInventoryCSV}
+                                disabled={this.state.isExporting}
+                                className={`${
+                                    this.state.isExporting 
+                                        ? 'bg-blue-400 cursor-not-allowed' 
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                } text-white font-bold py-2 px-4 rounded inline-flex items-center`}
+                            >
+                                {this.state.isExporting ? (
+                                    <>
+                                        <Spinner className="w-4 h-4 mr-2" />
+                                        Exporting...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M13 8V2H7v6H2l8 8 8-8h-5zM0 18h20v2H0v-2z"/>
+                                        </svg>
+                                        Export Inventory CSV
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {this.state.lastExportTime && (
+                            <div className="text-sm text-green-600">
+                                ✓ Last export completed: {this.state.lastExportTime}
+                            </div>
+                        )}
+
+                        {this.state.error && (
+                            <div className="text-sm text-red-600">
+                                ⚠ {this.state.error}
+                            </div>
+                        )}
                     </div>
                 </div>
             </>

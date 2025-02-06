@@ -32,17 +32,16 @@ export const BatchApiService = {
                     params,
                 });
                 
-                // Throttle before processing response
                 await this._throttle(response);
                 
                 lastResponse = response;
 
-                if (response?.data) {
-                    allData = allData.concat(response?.data);
+                if (response?.data?.data) {
+                    allData = allData.concat(response.data.data);
                 }
 
-                const pagination = this._extractPaginationData(response);
-                hasNextPage = pagination.currentPage < pagination.totalPages;
+                const pagination = response.data?.meta?.pagination;
+                hasNextPage = pagination?.current_page < pagination?.total_pages;
                 
                 if (hasNextPage) {
                     params.page++;
@@ -60,33 +59,33 @@ export const BatchApiService = {
             }
         }
 
-        lastResponse.data = allData;
+        lastResponse.data = {
+            data: allData,
+            meta: lastResponse.data.meta
+        };
         return lastResponse;
     },
 
-    // Add specific batch operation methods
-    async exportOrders(params = {}) {
-        return this.fetchAllPages('v2/orders', params);
+    // Replace order-specific methods with inventory methods
+    async exportInventory(params = {}) {
+        return this.fetchAllPages('v3/inventory/locations/1/items', params);
     },
 
-    async generateOrderReport(dateRange) {
-        const response = await this.fetchAllPages('v2/orders', {
-            params: {
-                date_created: dateRange
-            }
-        });
+    async generateInventoryReport() {
+        const response = await this.fetchAllPages('v3/inventory/locations/1/items');
 
         return {
-            data: response.data,
-            stats: this._calculateOrderStats(response.data)
+            data: response.data.data,
+            stats: this._calculateInventoryStats(response.data.data)
         };
     },
 
-    _calculateOrderStats(orders) {
+    _calculateInventoryStats(items) {
         return {
-            totalOrders: orders.length,
-            totalRevenue: orders.reduce((sum, order) => sum + order.total_inc_tax, 0),
-            // ... other calculations
+            totalItems: items.length,
+            totalStock: items.reduce((sum, item) => sum + item.total_inventory_onhand, 0),
+            lowStockItems: items.filter(item => item.available_to_sell <= item.settings.warning_level).length,
+            outOfStockItems: items.filter(item => !item.settings.is_in_stock).length
         };
     }
 }; 
