@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\MainController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,10 +33,27 @@ Route::get('/dashboard', function () {
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy'); 
+
     Route::get('/orders', function () {
         return Inertia::render('List');
     })->name('orders');
-});
 
+    Route::get('/reports', function () {
+        return Inertia::render('Reports');
+    })->name('reports');
+
+    Route::get('/inventory', function () {
+        return Inertia::render('Inventory');
+    })->name('inventory');
+
+    // Specific orders endpoint route
+    // Route::any('/bc-api/v2/orders/{orderId?}', [MainController::class, 'proxyBigCommerceAPIRequest'])
+    //     ->where('orderId', '[0-9]+')
+    //     ->defaults('endpoint', 'v2/orders');
+
+    // Catch-all route
+    Route::any('/bc-api/{endpoint}', [MainController::class, 'proxyBigCommerceAPIRequest'])
+        ->where('endpoint', 'v2/.*|v3/.*');
+    });
 require __DIR__.'/auth.php';
