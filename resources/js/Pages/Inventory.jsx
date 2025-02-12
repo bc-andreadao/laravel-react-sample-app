@@ -91,7 +91,7 @@ export default class Inventory extends React.Component {
     loadInventory() {
         ApiService.getResourceCollection('v3/inventory/locations/1/items', {
             limit: 5,
-            page: 2
+            page: 1
         })
             .then(this.handleInventoryResponse.bind(this))
             .catch(error => {
