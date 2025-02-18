@@ -6,6 +6,8 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Http\Response;
+use Inertia\Inertia;
 
 use GuzzleHttp\Exception\RequestException;
 
@@ -42,8 +44,10 @@ class MainController extends BaseController
     {
         if (env('APP_ENV') === 'local') {
             return env('BC_LOCAL_ACCESS_TOKEN');
-        } else {
+        } else if ($request->session()->has('access_token')) {
             return $request->session()->get('access_token');
+        } else {
+            return env('BC_APP_ACCESS_TOKEN');
         }
     }
 
@@ -51,16 +55,18 @@ class MainController extends BaseController
     {
         if (env('APP_ENV') === 'local') {
             return env('BC_LOCAL_STORE_HASH');
-        } else {
+        } else if ($request->session()->has('store_hash')) {
             return $request->session()->get('store_hash');
+        } else {
+            return env('BC_APP_STORE_HASH');
         }
     }
 
-    public function install(Request $request): RedirectResponse
+    public function install(Request $request): Response|RedirectResponse
     {
-        // Make sure all required query params have been passed
         if (!$request->has('code') || !$request->has('scope') || !$request->has('context')) {
-            return redirect()->action([MainController::class, 'error'], ['error_message' => 'Not enough information was passed to install this app.']);
+            return redirect()->action([MainController::class, 'error'], 
+                ['error_message' => 'Not enough information was passed to install this app.']);
         }
 
         try {
@@ -91,9 +97,10 @@ class MainController extends BaseController
                 if ($request->has('external_install')) {
                     return Redirect::to('https://login.bigcommerce.com/app/' . $this->getAppClientId() . '/install/succeeded');
                 }
-            }
 
-            return Redirect::to('/');
+                // For control panel installations, render your app's page
+                return Redirect::to('/');
+            }
         } catch (RequestException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             $errorMessage = "An error occurred.";
@@ -126,10 +133,16 @@ class MainController extends BaseController
                 $request->session()->put('owner_email', $verifiedSignedRequestData['owner']['email']);
                 $request->session()->put('store_hash', $verifiedSignedRequestData['context']);
                 
+                \Log::info('BigCommerce load successful', [
+                    'store_hash' => $verifiedSignedRequestData['context'],
+                    'user_id' => $verifiedSignedRequestData['user']['id']
+                ]);
             } else {
+                \Log::error('BigCommerce signed request validation failed');
                 return redirect()->action([MainController::class, 'error'], ['error_message' => 'The signed request from BigCommerce could not be validated.']);
             }
         } else {
+            \Log::error('Empty signed payload received');
             return redirect()->action([MainController::class, 'error'], ['error_message' => 'The signed request from BigCommerce was empty.']);
         }
 
@@ -138,15 +151,18 @@ class MainController extends BaseController
         return Redirect::to('/');
     }
 
-    public function error(Request $request)
+    public function error(Request $request): Response
     {
         $errorMessage = "Internal Application Error";
 
-        if ($request->session()->has('error_message')) {
-            $errorMessage = $request->session()->get('error_message');
+        if ($request->has('error_message')) {
+            $errorMessage = $request->input('error_message');
         }
 
-        echo '<h4>An issue has occurred:</h4> <p>' . $errorMessage . '</p> <a href="' . $this->baseURL . '">Go back to home</a>';
+        return response()->view('error', [
+            'errorMessage' => $errorMessage,
+            'baseURL' => $this->baseURL
+        ]);
     }
 
     private function verifySignedRequest($signedRequest, $appRequest)
@@ -188,7 +204,7 @@ class MainController extends BaseController
         return $result;
     }
 
-    public function proxyBigCommerceAPIRequest(Request $request, $endpoint)
+    public function proxyBigCommerceAPIRequest(Request $request, string $endpoint)
     {
         if (strrpos($endpoint, 'v2') !== false) {
             // For v2 endpoints, add a .json to the end of each endpoint, to normalize against the v3 API standards
