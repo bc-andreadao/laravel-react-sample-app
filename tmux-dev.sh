@@ -2,7 +2,7 @@
 SESSION_NAME="laravel-dev"
 INSIDE_TMUX="${TMUX:-}"
 
-if tmux has-session -t "$SESSION_NAME"; then
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   [ -n "$INSIDE_TMUX" ] && tmux switch-client -t "$SESSION_NAME" || tmux attach -t "$SESSION_NAME"
   exit 0
 fi
